@@ -1,0 +1,1117 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ইনকাম ভাই - Client App</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+  <script src="https://sad.adsgram.ai/js/sad.min.js"></script>
+
+  <style>
+    body { -webkit-user-select: none; user-select: none; font-family: system-ui, -apple-system, sans-serif; }
+    .spinning { animation: rotate 3s cubic-bezier(0.1, 0.8, 0.3, 1) forwards; }
+    @keyframes rotate { 0% { transform: rotate(0deg); } 100% { transform: rotate(1440deg); } }
+    @keyframes floatAnimation { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-10px) scale(1.05); } }
+    .animate-support { animation: floatAnimation 3s ease-in-out infinite; }
+    
+    @keyframes marquee {
+      0% { transform: translateX(100%); }
+      100% { transform: translateX(-100%); }
+    }
+    .scroll-notice { display: inline-block; white-space: nowrap; animation: marquee 15s linear infinite; }
+    .scroll-notice:hover { animation-play-state: paused; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen pb-24">
+
+  <div id="vpn-screen" class="hidden fixed inset-0 bg-slate-900 z-50 flex flex-col items-center justify-center p-6 text-center">
+    <div class="text-6xl mb-4">🛡️</div>
+    <h1 class="text-xl font-black text-rose-500 uppercase tracking-wide">VPN Detected!</h1>
+    <p class="text-sm text-slate-400 mt-2 max-w-xs">দয়া করে ভিপিএন (VPN) বন্ধ করে অ্যাপটি পুনরায় ওপেন করুন। ভিপিএন ব্যবহার করে কাজ করা সম্পূর্ণ নিষিদ্ধ।</p>
+  </div>
+
+  <div id="maintenance-screen" class="hidden fixed inset-0 bg-slate-900 z-50 flex flex-col items-center justify-center p-6 text-center">
+    <div class="text-6xl mb-4">⚙️</div>
+    <h1 class="text-xl font-black text-amber-500 uppercase tracking-wide">Server Maintenance</h1>
+    <p class="text-sm text-slate-400 mt-2 max-w-xs">অ্যাডমিন প্যানেল থেকে বর্তমানে অ্যাপের কাজ বন্ধ রাখা হয়েছে। অনুগ্রহ করে পরে চেষ্টা করুন।</p>
+    <a id="maintenance-support-btn" href="https://t.me/earningbd5l" target="_blank" class="mt-6 bg-emerald-500 text-white font-bold px-6 py-2.5 rounded-xl text-xs shadow-md">💬 Contact Support</a>
+  </div>
+
+  <div id="ban-screen" class="hidden fixed inset-0 bg-slate-900 z-50 flex flex-col items-center justify-center p-6 text-center">
+    <div class="text-6xl mb-4">🚫</div>
+    <h1 class="text-xl font-black text-rose-500 uppercase tracking-wide">Your Account is Banned</h1>
+    <p class="text-sm text-slate-400 mt-2 max-w-xs">অ্যাডমিন প্যানেল থেকে আপনার অ্যাকাউন্টটি ব্লক করা হয়েছে।</p>
+    <a id="ban-support-btn" href="https://t.me/earningbd5l" target="_blank" class="mt-6 bg-emerald-500 text-white font-bold px-6 py-2.5 rounded-xl text-xs shadow-md">💬 Contact Support</a>
+  </div>
+
+  <div id="submit-overlay" class="hidden fixed inset-0 bg-slate-950/95 z-50 flex flex-col items-center justify-between p-6 text-center overflow-y-auto">
+    <div class="w-full flex flex-col items-center gap-1.5 pt-4">
+      <div id="ad-timer-badge" class="bg-slate-800/80 text-white border border-slate-700 font-mono text-sm px-6 py-2 rounded-full backdrop-blur-md font-bold tracking-widest">
+        00:00
+      </div>
+      <div id="ad-count-badge" class="text-[10px] uppercase font-bold tracking-wider text-orange-400 px-3 py-0.5 rounded bg-orange-950/40 border border-orange-900/30">
+        Loading Loaders...
+      </div>
+    </div>
+
+    <div class="w-full max-w-sm bg-slate-900/50 border border-slate-800/80 rounded-3xl p-5 my-auto space-y-5 shadow-2xl backdrop-blur-xs">
+      <div id="ad-gift-emoji" class="w-20 h-20 bg-gradient-to-tr from-orange-500 to-amber-500 text-white rounded-2xl flex items-center justify-center text-4xl mx-auto shadow-lg transition-all duration-300">
+        🎁
+      </div>
+      
+      <div>
+        <h3 id="ad-status-title" class="text-white text-base font-black tracking-wide uppercase px-2">Initializing System...</h3>
+        <p id="ad-status-desc" class="text-xs text-slate-400 mt-2 px-4 leading-relaxed">বিজ্ঞাপনটি লোড হচ্ছে। অনুগ্রহ করে অপেক্ষা করুন...</p>
+      </div>
+
+      <div id="ad-warning-box" class="bg-red-950/40 border border-red-900/40 rounded-xl p-2.5 text-[10px] text-red-400 font-medium">
+        ⚠️ DO NOT CLOSE THE AD UNTIL IT FINISHES OR EXITS!
+      </div>
+
+      <div class="flex flex-col items-center gap-1 pt-1">
+        <span class="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Sponsored Network</span>
+        <span class="text-xs bg-slate-800 text-slate-300 font-extrabold px-3 py-1 rounded-md border border-slate-700/50">ads by Adsgram</span>
+      </div>
+    </div>
+
+    <div class="w-full max-w-sm pb-4">
+      <button id="ad-claim-btn" disabled class="w-full bg-slate-800 text-slate-500 font-black py-4 rounded-2xl text-xs tracking-widest uppercase cursor-not-allowed transition-all duration-300 border border-slate-700/40">
+        🔒 Claim Reward
+      </button>
+    </div>
+  </div>
+
+  <div id="leaderboard-modal" class="hidden fixed inset-0 bg-slate-950/60 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
+    <div class="bg-white rounded-2xl w-full max-w-sm p-5 space-y-4 shadow-xl border border-slate-100 flex flex-col max-h-[80vh]">
+      <div class="flex justify-between items-center border-b border-slate-100 pb-2">
+        <h3 class="font-black text-slate-800 text-sm flex items-center gap-1.5">🏆 Top 10 Earners</h3>
+        <button onclick="closeLeaderboard()" class="text-slate-400 hover:text-slate-600 text-lg font-bold px-2">✕</button>
+      </div>
+      <div id="leaderboard-list" class="space-y-2 overflow-y-auto pr-1 flex-1 text-xs">
+        <p class="text-center text-slate-400 py-4">Fetching leaders...</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="app" class="max-w-md mx-auto p-4 hidden relative">
+    
+    <div id="top-header" onclick="switchScreen('profile')" class="flex justify-between items-center bg-white p-3 rounded-xl shadow-xs border border-slate-100 mb-4 cursor-pointer hover:bg-slate-50/80 active:scale-98 transition-all duration-150">
+      <div class="flex items-center gap-2.5">
+        <img id="user-avatar-top" src="" alt="" class="w-8 h-8 rounded-full object-cover border border-slate-200 hidden">
+        <div id="avatar-fallback-top" class="w-8 h-8 bg-blue-500 text-white rounded-full flex items-center justify-center font-bold text-sm hidden"></div>
+        <div>
+          <h2 class="text-[10px] text-slate-400 leading-none mb-0.5">Welcome,</h2>
+          <p id="user-name" class="font-bold text-slate-700 text-xs leading-none">Loading...</p>
+        </div>
+      </div>
+      <span id="app-identity-badge" class="bg-orange-50 text-orange-600 text-xs px-2.5 py-1 rounded-full font-black tracking-wide">ইনকাম ভাই</span>
+    </div>
+
+    <div id="balance-card" class="bg-gradient-to-br from-orange-500 to-amber-600 text-white p-5 rounded-2xl shadow-md relative overflow-hidden mb-3">
+      <p class="text-xs opacity-80 uppercase tracking-wider">Your Balance</p>
+      <div class="flex items-baseline gap-2 mt-1">
+        <span id="user-balance" class="text-3xl font-extrabold tracking-tight">0</span>
+        <span class="text-sm font-medium opacity-90">Coins</span>
+      </div>
+      <div class="border-t border-white/20 mt-4 pt-3 flex justify-between text-xs opacity-90">
+        <span>Estimated Value:</span>
+        <span id="user-bdt" class="font-bold">৳ 0.00 BDT</span>
+      </div>
+    </div>
+
+    <div id="scrolling-notice-bar" class="w-full bg-red-50 border border-red-100 rounded-lg py-2 px-3 mb-4 overflow-hidden shadow-xs">
+      <div class="w-full overflow-hidden relative flex items-center">
+        <span id="scrolling-notice-text" class="scroll-notice text-xs font-bold text-red-600">লোড হচ্ছে...</span>
+      </div>
+    </div>
+
+    <div id="screen-content" class="space-y-4"></div>
+
+    <a id="floating-support-btn" href="https://t.me/earningbd5l" target="_blank" class="fixed bottom-20 right-4 z-50 bg-emerald-500 text-white p-3.5 rounded-full shadow-lg border-2 border-white animate-support flex items-center justify-center text-xl">💬</a>
+
+    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 shadow-lg px-2 py-2 flex justify-between items-center z-40 max-w-md mx-auto">
+      <button onclick="switchScreen('home')" class="nav-btn flex flex-col items-center gap-1 text-slate-400 text-xs flex-1" id="nav-home"><span>🏠</span><span>Home</span></button>
+      <button onclick="switchScreen('spin')" class="nav-btn flex flex-col items-center gap-1 text-slate-400 text-xs flex-1" id="nav-spin"><span>🎡</span><span>Spin</span></button>
+      <button onclick="switchScreen('tasks')" class="nav-btn flex flex-col items-center gap-1 text-slate-400 text-xs flex-1" id="nav-tasks"><span>📋</span><span>Tasks</span></button>
+      <button onclick="switchScreen('wallet')" class="nav-btn flex flex-col items-center gap-1 text-slate-400 text-xs flex-1" id="nav-wallet"><span>💳</span><span>Wallet</span></button>
+      <button onclick="switchScreen('profile')" class="nav-btn flex flex-col items-center gap-1 text-slate-400 text-xs flex-1" id="nav-profile"><span>👤</span><span>Profile</span></button>
+    </nav>
+  </div>
+
+  <div id="loading" class="flex flex-col items-center justify-center min-h-screen text-slate-500">
+    <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-orange-500 mb-2"></div>
+    <p class="text-sm font-medium">Loading Safe Dashboard...</p>
+  </div>
+
+  <script>
+    // ফায়ারবেস কনফিগারেশন 
+    const firebaseConfig = {
+      apiKey: "AIzaSyBSxSYqdgmcSYuY_P1ini8RF_X8PIbywe8",
+      authDomain: "downloader-project-67c06.firebaseapp.com",
+      databaseURL: "https://downloader-project-67c06-default-rtdb.firebaseio.com",
+      projectId: "downloader-project-67c06"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    
+    let tg, tgUser, startParam;
+    try {
+      tg = window.Telegram.WebApp; 
+      tg.ready(); 
+      tg.expand();
+      tgUser = tg.initDataUnsafe?.user;
+      startParam = tg.initDataUnsafe?.start_param || null;
+    } catch(e) {
+      console.log("Telegram WebApp Error, loading fallback user.");
+    }
+
+    if (!tgUser || !tgUser.id) {
+      tgUser = { id: "6190835532", first_name: "Test User", username: "test_user", photo_url: "" };
+    }
+
+    // গ্লোবাল ভ্যারিয়েবলস
+    let currentUser = null;
+    let globalAppName = "ইনকাম ভাই";
+    let globalBotUsername = "Income_Bhai_Bot";
+    let globalSupportLink = "https://t.me/earningbd5l";
+    let globalNoticeText = "নিয়ম মেনে কাজ করুন।";
+    let globalTargetCoins = 5000; 
+    let globalEquivalentBDT = 10; 
+    let globalReferBonus = 500;
+    let globalDailyReward = 50;
+    
+    let globalAdRewardTask2 = 50; 
+    let globalAdRewardTask3 = 60;
+
+    let adsgramBlockIdTask1 = "2412"; 
+    let adsgramBlockIdTask2 = "2412";
+    let adsgramBlockIdTask3 = "2412";
+    let adsgramClaimBlockId = "2412"; 
+    let adsgramSpinBlockId = "2412";
+    let adsgramQuizBlockId = "2412";
+    let adsgramBoxBlockId = "2412";
+
+    let serverPromoCode = "WELCOME2026";
+    let serverPromoReward = 200;
+    let serverPromoLimit = 100; 
+
+    let limitQuizDaily = 10;
+    let limitHourlyDaily = 10;
+    let limitVideoZoneADaily = 10;
+    let limitVideoZoneBDaily = 10;
+    let limitSpinDaily = 10; 
+
+    let currentNum1 = 0, currentNum2 = 0, currentAnswer = 0;
+    let quizInterval = null;
+    let hourlyInterval = null;
+    let activeTaskTab = 1;
+    let currentAdCountdown = 10;
+    let adTimerInterval = null;
+    let currentActiveScreen = 'home';
+
+    // Anti-VPN Guard
+    function checkVpnSecurity() {
+      if (Intl && typeof Intl.DateTimeFormat === 'function') {
+        const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        if (timeZone !== 'Asia/Dhaka' && timeZone !== 'Asia/Almaty' && timeZone !== 'UTC') {
+          document.getElementById('app').classList.add('hidden');
+          document.getElementById('loading').classList.add('hidden');
+          document.getElementById('vpn-screen').classList.remove('hidden');
+          return false;
+        }
+      }
+      return true;
+    }
+
+    function getAdsgramController(blockId) {
+      if (!blockId) return null;
+      if (window.Adsgram && typeof window.Adsgram.init === 'function') {
+        return window.Adsgram.init({ blockId: blockId });
+      }
+      return null;
+    }
+
+    function runClaimOptionAdFlow(blockId, successCallback) {
+      if(!checkVpnSecurity()) return;
+      const overlay = document.getElementById('submit-overlay');
+      const timerBadge = document.getElementById('ad-timer-badge');
+      const countBadge = document.getElementById('ad-count-badge');
+      const claimBtn = document.getElementById('ad-claim-btn');
+      const statusTitle = document.getElementById('ad-status-title');
+      const statusDesc = document.getElementById('ad-status-desc');
+      const giftEmoji = document.getElementById('ad-gift-emoji');
+
+      if (!overlay || !timerBadge || !countBadge || !claimBtn || !statusTitle || !statusDesc || !giftEmoji) return;
+
+      const targetId = blockId || adsgramClaimBlockId;
+      const controller = getAdsgramController(targetId);
+      if(!controller) {
+        if(typeof tg.showAlert === 'function') tg.showAlert("বিজ্ঞাপন নেটওয়ার্ক লোড হয়নি বা আইডি সেট করা নেই! সরাসরি রিওয়ার্ড দেওয়া হচ্ছে।");
+        if(successCallback) successCallback();
+        return;
+      }
+
+      overlay.classList.remove('hidden');
+      currentAdCountdown = 10;
+      timerBadge.innerText = "00:10";
+      countBadge.innerText = "⚡ Mode: Secure System Verification";
+      statusTitle.innerText = "🎯 Ad Loading...";
+      statusDesc.innerText = "বিজ্ঞাপনটি লোড হওয়া পর্যন্ত দয়া করে অপেক্ষা করুন।";
+      giftEmoji.innerText = "🎁";
+      
+      claimBtn.disabled = true;
+      claimBtn.innerText = "🔒 Verifying Safety...";
+
+      if (adTimerInterval) clearInterval(adTimerInterval);
+
+      try {
+        controller.show().then(() => {
+          statusTitle.innerText = "⏳ Processing Verification...";
+          statusDesc.innerText = "অনুগ্রহ করে ক্লেইম বাটন আনলক হওয়া পর্যন্ত স্ক্রিনে অপেক্ষা করুন।";
+          
+          adTimerInterval = setInterval(() => {
+            currentAdCountdown--;
+            timerBadge.innerText = `00:${currentAdCountdown < 10 ? '0' + currentAdCountdown : currentAdCountdown}`;
+            
+            if (currentAdCountdown <= 0) {
+              clearInterval(adTimerInterval);
+              statusTitle.innerText = "🎉 Processed Successfully!";
+              statusDesc.innerText = "নিচে ক্লিক করে কয়েন সংগ্রহ করুন।";
+              claimBtn.disabled = false;
+              claimBtn.innerText = "✅ Click to get Reward!";
+              
+              claimBtn.onclick = function() {
+                overlay.classList.add('hidden');
+                claimBtn.onclick = null;
+                if (successCallback) successCallback();
+              };
+            }
+          }, 1000);
+        }).catch((err) => {
+          clearInterval(adTimerInterval);
+          overlay.classList.add('hidden');
+          if(typeof tg.showAlert === 'function') tg.showAlert("বিজ্ঞাপনটি সফলভাবে দেখা হয়নি! ❌");
+        });
+      } catch(e) {
+        overlay.classList.add('hidden');
+        if(successCallback) successCallback();
+      }
+    }
+
+    function runVideoAdFlow(blockId, successCallback) {
+      if(!checkVpnSecurity()) return;
+      const overlay = document.getElementById('submit-overlay');
+      const timerBadge = document.getElementById('ad-timer-badge');
+      const countBadge = document.getElementById('ad-count-badge');
+      const claimBtn = document.getElementById('ad-claim-btn');
+      const statusTitle = document.getElementById('ad-status-title');
+      const statusDesc = document.getElementById('ad-status-desc');
+      const giftEmoji = document.getElementById('ad-gift-emoji');
+
+      if (!overlay || !timerBadge || !countBadge || !claimBtn || !statusTitle || !statusDesc || !giftEmoji) return;
+
+      const controller = getAdsgramController(blockId);
+      if(!controller) {
+        if(typeof tg.showAlert === 'function') tg.showAlert("বিজ্ঞাপন পাওয়া হয়নি বা আইডি সেট করা নেই! অনুগ্রহ করে পরে চেষ্টা করুন।");
+        return;
+      }
+
+      overlay.classList.remove('hidden');
+      currentAdCountdown = 15;
+      timerBadge.innerText = "00:15";
+      countBadge.innerText = "🎬 Mode: Rewarded Video Task";
+      statusTitle.innerText = "🎬 Loading Video Campaign...";
+      statusDesc.innerText = "ভিডিও বিজ্ঞাপনটি প্লে হচ্ছে। পুরো ভিডিওটি সম্পূর্ণ দেখুন।";
+      giftEmoji.innerText = "💎";
+
+      claimBtn.disabled = true;
+      claimBtn.innerText = "🔒 Watch Full Video First";
+
+      if (adTimerInterval) clearInterval(adTimerInterval);
+      
+      try {
+        controller.show().then(() => {
+          statusTitle.innerText = "⚡ Video Finished!";
+          statusDesc.innerText = "ভেরিফিকেশন সম্পন্ন হচ্ছে, বাটন অ্যাক্টিভ হওয়া পর্যন্ত অপেক্ষা করুন।";
+          
+          adTimerInterval = setInterval(() => {
+            currentAdCountdown--;
+            timerBadge.innerText = `00:${currentAdCountdown < 10 ? '0' + currentAdCountdown : currentAdCountdown}`;
+            if (currentAdCountdown <= 0) {
+              clearInterval(adTimerInterval);
+              statusTitle.innerText = "🎉 Verification Finished!";
+              statusDesc.innerText = "নিচে ক্লিক করে সফলভাবে রিওয়ার্ড ক্লেইম করুন।";
+              claimBtn.disabled = false;
+              claimBtn.innerText = "✅ Click to get Reward!";
+              
+              claimBtn.onclick = function() {
+                overlay.classList.add('hidden');
+                claimBtn.onclick = null;
+                if (successCallback) successCallback();
+              };
+            }
+          }, 1000);
+        }).catch((error) => {
+          clearInterval(adTimerInterval);
+          overlay.classList.add('hidden');
+          if(typeof tg.showAlert === 'function') tg.showAlert("বিজ্ঞাপনটি সম্পূর্ণ দেখা হয়নি বা কেটে দেওয়া হয়েছে! ❌");
+        });
+      } catch(e) {
+        overlay.classList.add('hidden');
+        if(typeof tg.showAlert === 'function') tg.showAlert("অ্যাড নেটওয়ার্ক লোড হতে সমস্যা হয়েছে।");
+      }
+    }
+
+    function syncAppRateSettings() {
+      db.ref('app_config').on('value', (snapshot) => {
+        if(snapshot.exists()) {
+          const config = snapshot.val();
+
+          if (config.maintenanceMode === true) {
+            document.getElementById('app').classList.add('hidden');
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('ban-screen').classList.add('hidden');
+            document.getElementById('maintenance-screen').classList.remove('hidden');
+            document.getElementById('maintenance-support-btn').href = config.supportLink || "https://t.me/earningbd5l";
+            return; 
+          } else {
+            document.getElementById('maintenance-screen').classList.add('hidden');
+          }
+
+          globalAppName = config.appName || "ইনকাম ভাই";
+          globalBotUsername = config.botUsername || "Income_Bhai_Bot";
+          globalSupportLink = config.supportLink || "https://t.me/earningbd5l";
+          globalNoticeText = config.noticeText || "নিয়ম মেনে কাজ করুন।";
+          globalTargetCoins = parseInt(config.targetCoins) || 5000;
+          globalEquivalentBDT = parseInt(config.equivalentBDT) || 10;
+          globalReferBonus = parseInt(config.referBonus) || 500;
+          globalDailyReward = parseInt(config.dailyReward) || 50;
+          
+          globalAdRewardTask2 = parseInt(config.adRewardTask2) || 50;
+          globalAdRewardTask3 = parseInt(config.adRewardTask3) || 60;
+
+          adsgramBlockIdTask1 = config.adsgram_block_id_task_1 || "2412";
+          adsgramBlockIdTask2 = config.adsgram_block_id_task_2 || "2412";
+          adsgramBlockIdTask3 = config.adsgram_block_id_task_3 || "2412";
+          
+          adsgramClaimBlockId = config.adZoneIdClaim || config.adsgram_claim_block_id || "2412";
+          adsgramSpinBlockId = config.adZoneIdSpin || "2412";
+          adsgramBoxBlockId = config.adZoneIdBox || "2412";
+          adsgramQuizBlockId = config.adZoneIdQuiz || "2412";
+
+          serverPromoCode = config.promoCode || "WELCOME2026";
+          serverPromoReward = parseInt(config.promoReward) || 200;
+          serverPromoLimit = parseInt(config.promoLimit) || 100; 
+
+          limitQuizDaily = parseInt(config.quizDailyLimit) || 10;
+          limitHourlyDaily = parseInt(config.hourlyDailyLimit) || 10;
+          limitVideoZoneADaily = parseInt(config.videoZoneADailyLimit) || 10;
+          limitVideoZoneBDaily = parseInt(config.videoZoneBDailyLimit) || 10;
+          limitSpinDaily = parseInt(config.spinDailyLimit) || 10; 
+          
+          if(document.getElementById('app-identity-badge')) document.getElementById('app-identity-badge').innerText = globalAppName;
+          if(document.getElementById('floating-support-btn')) document.getElementById('floating-support-btn').href = globalSupportLink;
+          if(document.getElementById('ban-support-btn')) document.getElementById('ban-support-btn').href = globalSupportLink;
+
+          const scrollTextEl = document.getElementById('scrolling-notice-text');
+          if (scrollTextEl) scrollTextEl.innerText = globalNoticeText;
+
+          if (currentUser) {
+            if(currentUser.isBanned !== true && checkVpnSecurity()) {
+              document.getElementById('app').classList.remove('hidden');
+              document.getElementById('loading').classList.add('hidden');
+            }
+            updateBalanceUI();
+            switchScreen(currentActiveScreen);
+          }
+        }
+      });
+    }
+
+    function setupUserAvatars() {
+      const topImg = document.getElementById('user-avatar-top');
+      const topFallback = document.getElementById('avatar-fallback-top');
+      const fallbackUrl = `https://api.dicebear.com/7.x/bottts/svg?seed=${tgUser.id}`;
+      const finalPhotoUrl = tgUser.photo_url || fallbackUrl;
+
+      if(topImg && topFallback) {
+        topImg.src = finalPhotoUrl;
+        topImg.classList.remove('hidden');
+        topFallback.classList.add('hidden');
+        topImg.onerror = function() {
+          topImg.classList.add('hidden');
+          topFallback.innerText = tgUser.first_name ? tgUser.first_name.charAt(0).toUpperCase() : "U";
+          topFallback.classList.remove('hidden');
+        };
+      }
+    }
+
+    function updateBalanceUI() {
+      const balEl = document.getElementById('user-balance');
+      const bdtEl = document.getElementById('user-bdt');
+      if(balEl && currentUser) balEl.innerText = currentUser.balance;
+      if(bdtEl && currentUser) {
+        let calculated = (currentUser.balance / globalTargetCoins) * globalEquivalentBDT;
+        bdtEl.innerText = `৳ ${isNaN(calculated) ? '0.00' : calculated.toFixed(2)} BDT`;
+      }
+    }
+
+    function initUser() {
+      if(!checkVpnSecurity()) return;
+      syncAppRateSettings();
+      setupUserAvatars();
+      const todayStr = new Date().toDateString();
+      const userRef = db.ref('users/' + tgUser.id);
+      
+      userRef.once('value', (snapshot) => {
+        if (!snapshot.exists()) {
+          let referrerId = (startParam && startParam !== tgUser.id.toString()) ? startParam.toString() : null;
+
+          let newUser = {
+            id: tgUser.id, 
+            firstName: tgUser.first_name || "Gamer BD", 
+            username: tgUser.username || "N/A",
+            balance: 100, 
+            dailyLastClaim: 0, 
+            spinCount: 0, 
+            lastSpinDate: "",
+            hourlyLastClaim: 0, 
+            quizLastClaim: 0, 
+            usedPromo: false,
+            quizCount: 0, 
+            hourlyCount: 0, 
+            videoZoneACount: 0, 
+            videoZoneBCount: 0, 
+            lastActivityDate: todayStr,
+            referredBy: referrerId,
+            referralCount: 0, 
+            isBanned: false, 
+            createdAt: Date.now()
+          };
+
+          userRef.set(newUser).then(() => { 
+            if (referrerId) {
+              giveReferBonusToReferrer(referrerId, tgUser.first_name || "Gamer BD");
+            }
+            loadAppData(newUser); 
+          });
+        } else { 
+          let userData = snapshot.val();
+          if(userData.lastActivityDate !== todayStr) {
+            userData.quizCount = 0;
+            userData.hourlyCount = 0;
+            userData.videoZoneACount = 0;
+            userData.videoZoneBCount = 0;
+            userData.spinCount = 0;
+            userData.lastActivityDate = todayStr;
+            userRef.update(userData);
+          }
+          loadAppData(userData); 
+        }
+      });
+
+      userRef.on('value', (snapshot) => {
+        if (snapshot.exists()) {
+          currentUser = snapshot.val();
+          if(currentUser.isBanned === true) {
+            document.getElementById('app').classList.add('hidden');
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('ban-screen').classList.remove('hidden');
+          } else { 
+            document.getElementById('ban-screen').classList.add('hidden');
+            if(checkVpnSecurity()) {
+              document.getElementById('app').classList.remove('hidden');
+              document.getElementById('loading').classList.add('hidden');
+            }
+            updateBalanceUI();
+          }
+        }
+      });
+    }
+
+    function giveReferBonusToReferrer(referrerId, newUserName) {
+      const referrerRef = db.ref('users/' + referrerId);
+      
+      referrerRef.once('value', (snapshot) => {
+        if (snapshot.exists()) {
+          const referrerData = snapshot.val();
+          let currentBalance = Number(referrerData.balance) || 0;
+          let currentReferCount = Number(referrerData.referralCount) || 0;
+          let bonusCoins = Number(globalReferBonus) || 500;
+          
+          referrerRef.update({
+            balance: currentBalance + bonusCoins,
+            referralCount: currentReferCount + 1
+          }).then(() => {
+            db.ref('task_submissions').push().set({ 
+              taskTitle: `Referral Bonus (New User: ${newUserName}) 👥`, 
+              userId: referrerId.toString(), 
+              userName: referrerData.firstName || "Referrer", 
+              reward: bonusCoins, 
+              status: "APPROVED", 
+              timestamp: Date.now() 
+            });
+          });
+        }
+      });
+    }
+
+    function loadAppData(user) {
+      currentUser = user;
+      if(currentUser.isBanned === true) {
+        document.getElementById('loading').classList.add('hidden'); 
+        document.getElementById('ban-screen').classList.remove('hidden'); 
+        return;
+      }
+      if(document.getElementById('user-name')) document.getElementById('user-name').innerText = user.firstName;
+      document.getElementById('loading').classList.add('hidden'); 
+      if(checkVpnSecurity()) {
+        document.getElementById('app').classList.remove('hidden'); 
+      }
+      switchScreen('home');
+    }
+
+    function copyReferLink() {
+      const linkInput = document.getElementById('refer-link-field');
+      if(!linkInput) return;
+      linkInput.select();
+      try {
+        navigator.clipboard.writeText(linkInput.value);
+        if(typeof tg.showAlert === 'function') tg.showAlert("রেফারেল লিংকটি সফলভাবে কপি হয়েছে! 🎉");
+      } catch (err) {
+        document.execCommand('copy');
+        if(typeof tg.showAlert === 'function') tg.showAlert("রেফারেল লিংকটি কপি হয়েছে! 🎉");
+      }
+    }
+
+    function switchScreen(screen) {
+      currentActiveScreen = screen;
+      if(quizInterval) clearInterval(quizInterval);
+      if(hourlyInterval) clearInterval(hourlyInterval);
+
+      document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('text-orange-500', 'font-bold'));
+      const targetNav = document.getElementById('nav-' + screen);
+      if(targetNav) targetNav.classList.add('text-orange-500', 'font-bold');
+      
+      const content = document.getElementById('screen-content');
+      const header = document.getElementById('top-header');
+      const balanceCard = document.getElementById('balance-card');
+      const scrollNoticeBar = document.getElementById('scrolling-notice-bar');
+      
+      if (!content) return;
+
+      if (screen === 'profile') {
+        if(header) header.classList.add('hidden'); 
+        if(balanceCard) balanceCard.classList.add('hidden'); 
+        if(scrollNoticeBar) scrollNoticeBar.classList.add('hidden');
+        const refLink = `https://t.me/${globalBotUsername}/app?startapp=${currentUser.id}`;
+        const finalProfilePhoto = tgUser.photo_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${tgUser.id}`;
+
+        content.innerHTML = `
+          <div class="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm space-y-5">
+            <div class="text-center border-b border-slate-100 pb-3 flex flex-col items-center">
+              <img src="${finalProfilePhoto}" class="w-16 h-16 rounded-full mb-2 border-2 border-orange-500 object-cover">
+              <h3 class="font-bold text-slate-800 text-base">${currentUser.firstName}</h3>
+              <p class="text-xs text-slate-400">@${currentUser.username}</p>
+              <button onclick="openLeaderboard()" class="mt-3 bg-blue-600 text-white font-bold text-xs px-4 py-2 rounded-xl flex items-center gap-1 shadow-sm">📊 View Top Users</button>
+            </div>
+            <div class="space-y-2 text-xs">
+              <div class="flex justify-between border-b border-slate-50 pb-1.5"><span class="text-slate-400">Telegram ID:</span><span class="font-mono font-bold text-slate-700">${currentUser.id}</span></div>
+              <div class="flex justify-between border-b border-slate-50 pb-1.5"><span class="text-slate-400">Current Balance:</span><span class="font-bold text-emerald-600">${currentUser.balance} Coins</span></div>
+              <div class="flex justify-between border-b border-slate-50 pb-1.5"><span class="text-slate-400">Total Referrals:</span><span class="font-bold text-blue-600">${currentUser.referralCount || 0} Users</span></div>
+            </div>
+            <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+              <p class="text-[11px] font-bold text-slate-700 mb-1">🎁 Have a Promo Code?</p>
+              <div class="flex gap-1.5 mt-1">
+                <input type="text" id="promo-code-input" placeholder="Enter Code Here" class="flex-1 bg-white border border-slate-200 p-2 rounded-lg text-slate-700 font-bold text-xs uppercase focus:outline-none">
+                <button id="promo-apply-btn" onclick="applyPromoCode()" class="bg-blue-600 text-white font-bold text-xs px-4 py-2 rounded-lg">Apply</button>
+              </div>
+            </div>
+            <div class="bg-orange-50/70 p-3 rounded-xl border border-orange-100/80">
+              <p class="text-[11px] text-orange-700 font-bold mb-1">Your Referral Link (+${globalReferBonus} Coins Reward)</p>
+              <div class="flex gap-1.5 mt-1.5">
+                <input type="text" id="refer-link-field" readonly value="${refLink}" class="flex-1 bg-white border border-slate-200 p-2 rounded-lg text-slate-600 font-mono text-[10px] focus:outline-none">
+                <button onclick="copyReferLink()" class="bg-orange-500 text-white font-bold text-xs px-4 py-2 rounded-lg">Copy 📋</button>
+              </div>
+            </div>
+            <div class="border-t border-slate-100 pt-4">
+              <h4 class="font-bold text-slate-700 text-xs mb-2">📊 Withdrawal History (Last 7 Days)</h4>
+              <div id="user-history-list" class="space-y-2 max-h-40 overflow-y-auto pr-1 text-xs"><p class="text-slate-400 text-[11px] text-center py-2">Loading history...</p></div>
+            </div>
+            <div class="border-t border-slate-100 pt-4">
+              <h4 class="font-bold text-slate-700 text-xs mb-2">📋 Task History (Last 7 Days)</h4>
+              <div id="user-task-history-list" class="space-y-2 max-h-40 overflow-y-auto pr-1 text-xs"><p class="text-slate-400 text-[11px] text-center py-2">Loading task history...</p></div>
+            </div>
+          </div>
+        `;
+        loadUserWithdrawalHistory(); 
+        loadUserTaskHistory(); 
+        return;
+      }
+
+      if(header) header.classList.remove('hidden'); 
+      if(balanceCard) balanceCard.classList.remove('hidden'); 
+      if(scrollNoticeBar) scrollNoticeBar.classList.remove('hidden');
+
+      if (screen === 'home') {
+        const hCount = currentUser.hourlyCount || 0;
+        content.innerHTML = `
+          <div class="space-y-4">
+            <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-xs flex justify-between items-center">
+              <div><h4 class="font-bold text-slate-800 text-sm">Daily Reward Bonus</h4><p class="text-xs text-slate-400">Claim your free ${globalDailyReward} coins</p></div>
+              <button onclick="claimDaily()" class="bg-orange-500 text-white text-xs font-bold px-4 py-2 rounded-lg">Claim</button>
+            </div>
+            <div class="bg-gradient-to-br from-amber-500 to-orange-600 p-4 rounded-xl text-white shadow-xs flex justify-between items-center">
+              <div class="space-y-0.5"><h4 class="font-black text-sm tracking-wide flex items-center gap-1">🎁 Hourly Mega Gift</h4><p id="hourly-timer-text" class="text-xs opacity-90">লিমিট: ${hCount}/${limitHourlyDaily}</p></div>
+              <button id="hourly-gift-btn" onclick="claimHourlyGift()" class="bg-white text-orange-600 font-extrabold text-xs px-4 py-2.5 rounded-xl shadow-md">Open Box</button>
+            </div>
+            <div class="bg-white p-5 rounded-xl border border-slate-100 shadow-xs space-y-3">
+              <div class="flex justify-between items-center border-b border-slate-100 pb-2">
+                <h4 class="font-bold text-slate-800 text-xs flex items-center gap-1">🧠 Math Quiz Challenge</h4>
+                <span id="quiz-limit-badge" class="text-emerald-600 font-bold text-[11px] bg-emerald-50 px-2 py-0.5 rounded">লিমিট: ${currentUser.quizCount || 0}/${limitQuizDaily}</span>
+              </div>
+              <div id="quiz-gameplay-area" class="space-y-3 text-center py-2"></div>
+            </div>
+            <div class="bg-blue-50/70 border border-blue-200 p-4 rounded-xl text-xs leading-relaxed">
+              <strong class="text-blue-700 font-bold block mb-1">💡 Rules & Info:</strong>
+              <div id="rules-info-text-box" class="text-blue-600 font-medium whitespace-pre-line">${globalNoticeText}</div>
+            </div>
+          </div>
+        `;
+        setupHourlyTimer();
+        generateNewQuiz();
+      } 
+      else if (screen === 'spin') {
+        const currentSpins = currentUser.spinCount || 0;
+        const isSpinLimitOver = currentSpins >= limitSpinDaily;
+        content.innerHTML = `
+          <div class="space-y-4">
+            <div class="bg-white p-6 rounded-xl border border-slate-100 shadow-xs text-center space-y-6">
+              <div><h3 class="font-bold text-slate-800 text-base">Premium Lucky Spin</h3><p class="text-xs text-slate-400 mt-1">আজকের স্পিন বাকি: ${isSpinLimitOver ? 0 : (limitSpinDaily - currentSpins)}/${limitSpinDaily}</p></div>
+              <div class="w-28 h-28 mx-auto border-4 border-dashed border-orange-500 rounded-full flex items-center justify-center text-3xl shadow-inner" id="wheel-graphic">🎁</div>
+              <button id="spin-btn" ${isSpinLimitOver ? 'disabled' : ''} onclick="triggerLuckySpin()" class="w-full ${isSpinLimitOver ? 'bg-red-200 text-red-500 cursor-not-allowed' : 'bg-orange-500 text-white'} font-bold py-3 rounded-xl text-xs shadow-md">
+                ${isSpinLimitOver ? '❌ Daily Spin Limit Finished' : 'START LUCKY SPIN'}
+              </button>
+            </div>
+          </div>
+        `;
+      }
+      else if (screen === 'tasks') {
+        content.innerHTML = `
+          <div class="flex items-center bg-white p-1 rounded-xl border border-slate-100 shadow-xs mb-4">
+            <button id="tab-task1" onclick="switchTaskTab(1)" class="flex-1 py-2 text-xs font-bold rounded-lg bg-orange-500 text-white">কাজ ১</button>
+            <div class="h-5 w-[1px] bg-slate-200 mx-0.5"></div>
+            <button id="tab-task2" onclick="switchTaskTab(2)" class="flex-1 py-2 text-xs font-bold rounded-lg text-slate-500 hover:bg-slate-50">কাজ ২</button>
+            <div class="h-5 w-[1px] bg-slate-200 mx-0.5"></div>
+            <button id="tab-task3" onclick="switchTaskTab(3)" class="flex-1 py-2 text-xs font-bold rounded-lg text-slate-500 hover:bg-slate-50">কাজ ৩</button>
+          </div>
+          <div id="tasks-list" class="space-y-3"></div>
+        `;
+        switchTaskTab(activeTaskTab); 
+      } 
+      else if (screen === 'wallet') {
+        content.innerHTML = `
+          <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-xs space-y-4">
+            <h3 class="font-bold text-slate-800 text-sm">Secure Gateway Cashout</h3>
+            <div class="grid grid-cols-3 gap-2">
+              <button id="method-bkash" onclick="setWithdrawMethod('bKash')" class="py-2 text-xs font-bold border rounded-lg border-orange-500 bg-orange-50 text-orange-600">bKash</button>
+              <button id="method-nagad" onclick="setWithdrawMethod('Nagad')" class="py-2 text-xs font-bold border rounded-lg border-slate-200 text-slate-500">Nagad</button>
+              <button id="method-rocket" onclick="setWithdrawMethod('Rocket')" class="py-2 text-xs font-bold border rounded-lg border-slate-200 text-slate-500">Rocket</button>
+            </div>
+            <input type="hidden" id="withdraw-method" value="bKash">
+            <div><label class="text-[11px] text-slate-400 block mb-1">Account Number</label><input type="tel" id="withdraw-wallet" placeholder="01XXXXXXXXX" class="w-full text-xs border border-slate-200 rounded-lg p-2.5 focus:outline-none"></div>
+            <div><label class="text-[11px] text-slate-400 block mb-1">Coins (Min ${globalTargetCoins})</label><input type="number" id="withdraw-amount" placeholder="${globalTargetCoins}" class="w-full text-xs border border-slate-200 rounded-lg p-2.5 focus:outline-none"></div>
+            <button onclick="handleWithdraw()" class="w-full bg-orange-500 text-white font-bold py-2.5 rounded-lg text-xs shadow-md">Request Cashout</button>
+          </div>
+        `;
+      }
+    }
+
+    function openLeaderboard() {
+      const modal = document.getElementById('leaderboard-modal'); const listContainer = document.getElementById('leaderboard-list');
+      if(!modal || !listContainer) return;
+      modal.classList.remove('hidden'); listContainer.innerHTML = `<p class="text-center text-slate-400 py-4">Loading leaders data...</p>`;
+      db.ref('users').orderByChild('balance').limitToLast(10).once('value', (snapshot) => {
+        if(!snapshot.exists()) { listContainer.innerHTML = `<p class="text-center text-slate-400 py-4">No top users found.</p>`; return; }
+        let usersArray = []; snapshot.forEach((child) => { usersArray.push(child.val()); });
+        usersArray.sort((a, b) => b.balance - a.balance);
+        let html = "";
+        usersArray.forEach((u, index) => {
+          let rankEmoji = index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : `#${index + 1}`;
+          let highlightClass = u.id.toString() === tgUser.id.toString() ? "bg-orange-50 border-orange-200" : "bg-slate-50 border-slate-100";
+          html += `<div class="flex justify-between items-center p-2.5 border rounded-xl ${highlightClass}"><div class="flex items-center gap-2"><span class="font-black text-sm w-6 text-center">${rankEmoji}</span><div><p class="font-bold text-slate-800 text-[11px]">${u.firstName} ${u.id.toString() === tgUser.id.toString() ? '(You)' : ''}</p><p class="text-[9px] text-slate-400">@${u.username || 'user'}</p></div></div><span class="font-extrabold text-emerald-600 text-[11px]">${u.balance} C</span></div>`;
+        });
+        listContainer.innerHTML = html;
+      });
+    }
+    function closeLeaderboard() { document.getElementById('leaderboard-modal').classList.add('hidden'); }
+
+    function setupHourlyTimer() {
+      const btn = document.getElementById('hourly-gift-btn'); const text = document.getElementById('hourly-timer-text');
+      if(!btn || !text) return;
+      if(hourlyInterval) clearInterval(hourlyInterval);
+      const hCount = currentUser.hourlyCount || 0;
+      if(hCount >= limitHourlyDaily) {
+        btn.disabled = true; btn.innerText = "Limit Over ❌";
+        text.innerText = `আজকের লিমিট শেষ (${hCount}/${limitHourlyDaily})`; return;
+      }
+      hourlyInterval = setInterval(() => {
+        const timePassed = Date.now() - (currentUser.hourlyLastClaim || 0);
+        if(timePassed < 3600000) {
+          btn.disabled = true; 
+          let diff = 3600000 - timePassed; let mins = Math.floor(diff / 60000); let secs = Math.floor((diff % 60000) / 1000);
+          text.innerText = `পরবর্তী ক্লেইম: ${mins}m ${secs}s (আজকে হয়েছে: ${hCount}/${limitHourlyDaily})`;
+        } else {
+          btn.disabled = false; 
+          text.innerText = `মেগা গিফট বক্স রেডি! (${hCount}/${limitHourlyDaily})`;
+        }
+      }, 1000);
+    }
+
+    function claimHourlyGift() {
+      const hCount = currentUser.hourlyCount || 0; if(hCount >= limitHourlyDaily) { if(typeof tg.showAlert === 'function') tg.showAlert("আজকের ডেইলি লিমিট শেষ!"); return; }
+      const timePassed = Date.now() - (currentUser.hourlyLastClaim || 0); if(timePassed < 3600000) return;
+      
+      runClaimOptionAdFlow(adsgramBoxBlockId, () => {
+        executeHourlyClaim();
+      });
+    }
+    
+    function executeHourlyClaim() {
+      const giftCoins = 100; const nextCount = (currentUser.hourlyCount || 0) + 1;
+      db.ref('users/' + currentUser.id).update({ balance: currentUser.balance + giftCoins, hourlyLastClaim: Date.now(), hourlyCount: nextCount }).then(() => {
+        db.ref('task_submissions').push().set({ taskTitle: `Hourly Gift Box (Claim #${nextCount}) 🎁`, userId: currentUser.id.toString(), userName: currentUser.firstName, reward: giftCoins, status: "APPROVED", timestamp: Date.now() });
+        if(typeof tg.showAlert === 'function') tg.showAlert(`অভিনন্দন! আপনার ফ্রি বক্সে +${giftCoins} কয়েন পেয়েছেন! 🎉`); setupHourlyTimer();
+      });
+    }
+
+    function generateNewQuiz() {
+      const area = document.getElementById('quiz-gameplay-area'); const badge = document.getElementById('quiz-limit-badge'); if(!area) return;
+      const qCount = currentUser.quizCount || 0; if(badge) badge.innerText = `লিমিট: ${qCount}/${limitQuizDaily}`;
+      if(qCount >= limitQuizDaily) { area.innerHTML = `<p class="text-red-500 font-bold text-xs py-2">❌ আপনার আজকের কুইজের ডেইলি লিমিট শেষ!</p>`; return; }
+      const timePassed = Date.now() - (currentUser.quizLastClaim || 0);
+      if(timePassed < 60000) {
+        if(quizInterval) clearInterval(quizInterval);
+        quizInterval = setInterval(() => {
+          let diff = 60000 - (Date.now() - currentUser.quizLastClaim);
+          if(diff <= 0) { clearInterval(quizInterval); generateNewQuiz(); } 
+          else { area.innerHTML = `<p class="text-slate-400 text-xs font-medium py-3">পরবর্তী অংক লোড হচ্ছে: ${Math.floor(diff/1000)} SECOND</p>`; }
+        }, 1000); return;
+      }
+      currentNum1 = Math.floor(Math.random() * 20) + 1; currentNum2 = Math.floor(Math.random() * 10) + 1; currentAnswer = currentNum1 + currentNum2;
+      area.innerHTML = `<div class="flex items-center justify-center gap-3 text-xl font-black text-slate-700 py-1"><span>${currentNum1}</span><span class="text-orange-500">+</span><span>${currentNum2}</span><span class="text-slate-400">=</span><input type="number" id="quiz-ans-input" placeholder="?" class="w-14 text-center border-b-2 border-slate-300 font-bold text-lg focus:outline-none"></div><button onclick="submitQuizAnswer()" class="w-full mt-2 bg-slate-800 text-white font-bold py-2 rounded-xl text-xs cursor-pointer">Submit Answer</button>`;
+    }
+
+    function submitQuizAnswer() {
+      if((currentUser.quizCount || 0) >= limitQuizDaily) { if(typeof tg.showAlert === 'function') tg.showAlert("আজকের কুইজ লিমিট শেষ!"); return; }
+      const inputEl = document.getElementById('quiz-ans-input'); if(!inputEl) return;
+      const userAns = parseInt(inputEl.value);
+      if(isNaN(userAns)) { if(typeof tg.showAlert === 'function') tg.showAlert("দয়া করে সঠিক উত্তরটি লিখুন!"); return; }
+      if(userAns !== currentAnswer) { if(typeof tg.showAlert === 'function') tg.showAlert("ভুল উত্তর! আবার চেষ্টা করুন। ❌"); return; }
+      
+      runClaimOptionAdFlow(adsgramQuizBlockId, () => {
+        executeQuizReward();
+      });
+    }
+    
+    function executeQuizReward() {
+      const quizReward = 30; const nextCount = (currentUser.quizCount || 0) + 1;
+      db.ref('users/' + currentUser.id).update({ balance: currentUser.balance + quizReward, quizLastClaim: Date.now(), quizCount: nextCount }).then(() => {
+        db.ref('task_submissions').push().set({ taskTitle: `Math Quiz Reward (#${nextCount}) 🧠`, userId: currentUser.id.toString(), userName: currentUser.firstName, reward: quizReward, status: "APPROVED", timestamp: Date.now() });
+        if(typeof tg.showAlert === 'function') tg.showAlert(`সঠিক উত্তর! আপনি পেয়েছেন +${quizReward} কয়েন। 🎉`); generateNewQuiz();
+      });
+    }
+
+    function triggerLuckySpin() {
+      let currentSpins = currentUser.spinCount || 0; if (currentSpins >= limitSpinDaily) { if(typeof tg.showAlert === 'function') tg.showAlert("আজকের স্পিন লিমিট শেষ!"); return; }
+      
+      runClaimOptionAdFlow(adsgramSpinBlockId, () => {
+        executeSpinWheelAnimation(currentSpins);
+      });
+    }
+    
+    function executeSpinWheelAnimation(currentSpins) {
+      const wheel = document.getElementById('wheel-graphic'); const btn = document.getElementById('spin-btn');
+      if(!btn || !wheel) return; 
+      btn.disabled = true; 
+      wheel.classList.add('spinning'); 
+      const randomReward = Math.floor(Math.random() * 60) + 10; 
+      
+      setTimeout(() => {
+        wheel.classList.remove('spinning'); 
+        btn.disabled = false;
+        db.ref('users/' + currentUser.id).update({ balance: currentUser.balance + randomReward, spinCount: currentSpins + 1 });
+        db.ref('task_submissions').push().set({ taskTitle: `Lucky Spin Reward (#${currentSpins + 1}) 🎡`, userId: currentUser.id.toString(), userName: currentUser.firstName, reward: randomReward, status: "APPROVED", timestamp: Date.now() });
+        if(typeof tg.showAlert === 'function') tg.showAlert("You Won " + randomReward + " Coins! 🎉"); switchScreen('spin');
+      }, 3000);
+    }
+
+    function switchTaskTab(tabNumber) {
+      activeTaskTab = tabNumber;
+      const btn1 = document.getElementById('tab-task1'); const btn2 = document.getElementById('tab-task2'); const btn3 = document.getElementById('tab-task3'); const container = document.getElementById('tasks-list');
+      if(!btn1 || !btn2 || !btn3 || !container) return;
+      const inactiveClass = "flex-1 py-2 text-xs font-bold rounded-lg text-slate-500 hover:bg-slate-50";
+      const activeClass = "flex-1 py-2 text-xs font-bold rounded-lg bg-orange-500 text-white";
+      btn1.className = inactiveClass; btn2.className = inactiveClass; btn3.className = inactiveClass;
+
+      if(tabNumber === 1) { btn1.className = activeClass; container.innerHTML = "<p class='text-center text-xs text-slate-400 py-4'>Loading active tasks...</p>"; loadTasks(); } 
+      else if(tabNumber === 2) {
+        btn2.className = activeClass; const vCountA = currentUser.videoZoneACount || 0; const isLimitOver = vCountA >= limitVideoZoneADaily;
+        container.innerHTML = `<div class="bg-white rounded-xl border border-slate-100 p-5 shadow-xs text-center space-y-4"><div class="flex justify-between items-center border-b border-slate-50 pb-2"><span class="text-[10px] font-bold px-2 py-0.5 rounded bg-orange-50 text-orange-600 uppercase">লিমিট: ${vCountA}/${limitVideoZoneADaily}</span><span class="text-emerald-600 font-extrabold text-xs">+${globalAdRewardTask2} Coins</span></div><div class="w-12 h-12 bg-orange-50 text-orange-500 rounded-full flex items-center justify-center text-xl mx-auto font-bold">🎬</div><div><h4 class="font-bold text-slate-800 text-sm">কাজ ২ - ভিডিও স্পনসর</h4><p class="text-xs text-slate-400 mt-1">স্পনসর ভিডিও অ্যাডটি সম্পূর্ণ দেখলে নিশ্চিত রিওয়ার্ড কয়েন পাবেন।</p></div><button ${isLimitOver ? 'disabled' : ''} onclick="playNetworkVideoAd(2)" class="w-full ${isLimitOver ? 'bg-red-200 text-red-500 cursor-not-allowed' : 'bg-gradient-to-r from-orange-500 to-amber-500 text-white'} font-bold py-3 rounded-xl text-xs shadow-md"> ${isLimitOver ? '❌ Daily Limit Finished' : '🚀 অ্যাড দেখুন (Earn Coins)'} </button></div>`;
+      }
+      else if(tabNumber === 3) {
+        btn3.className = activeClass; const vCountB = currentUser.videoZoneBCount || 0; const isLimitOver = vCountB >= limitVideoZoneBDaily;
+        container.innerHTML = `<div class="bg-white rounded-xl border border-slate-100 p-5 shadow-xs text-center space-y-4"><div class="flex justify-between items-center border-b border-slate-50 pb-2"><span class="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-600 uppercase">লিমিট: ${vCountB}/${limitVideoZoneBDaily}</span><span class="text-emerald-600 font-extrabold text-xs">+${globalAdRewardTask3} Coins</span></div><div class="w-12 h-12 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center text-xl mx-auto font-bold">🎥</div><div><h4 class="font-bold text-slate-800 text-sm">কাজ ৩ - প্রিমিয়াম ভিডিও</h4><p class="text-xs text-slate-400 mt-1">এই জোন থেকে আরেকটি এক্সক্লুসিভ অ্যাড দেখে বাড়তি ইনকাম করার সুযোগ নিন।</p></div><button ${isLimitOver ? 'disabled' : ''} onclick="playNetworkVideoAd(3)" class="w-full ${isLimitOver ? 'bg-red-200 text-red-500 cursor-not-allowed' : 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white'} font-bold py-3 rounded-xl text-xs shadow-md"> ${isLimitOver ? '❌ Daily Limit Finished' : '🚀 প্রিমিয়াম অ্যাড দেখুন (Earn Coins)'} </button></div>`;
+      }
+    }
+
+    function playNetworkVideoAd(taskType) {
+      if(taskType === 2 && (currentUser.videoZoneACount || 0) >= limitVideoZoneADaily) { if(typeof tg.showAlert === 'function') tg.showAlert("কাজ ২-এর ডেইলি লিমিট শেষ!"); return; }
+      if(taskType === 3 && (currentUser.videoZoneBCount || 0) >= limitVideoZoneBDaily) { if(typeof tg.showAlert === 'function') tg.showAlert("কাজ ৩-এর ডেইলি লিমিট শেষ!"); return; }
+      
+      let targetBlockId = (taskType === 2) ? adsgramBlockIdTask2 : adsgramBlockIdTask3;
+      
+      runVideoAdFlow(targetBlockId, () => {
+        let rCoins = (taskType === 2) ? globalAdRewardTask2 : globalAdRewardTask3; 
+        executeAdReward(rCoins, taskType);
+      });
+    }
+    
+    function executeAdReward(rewardAmount, type) {
+      let updateObj = { balance: currentUser.balance + rewardAmount }; let currentNumber = 0;
+      if(type === 2) { currentNumber = (currentUser.videoZoneACount || 0) + 1; updateObj.videoZoneACount = currentNumber; } 
+      else { currentNumber = (currentUser.videoZoneBCount || 0) + 1; updateObj.videoZoneBCount = currentNumber; }
+      db.ref('users/' + currentUser.id).update(updateObj).then(() => {
+        db.ref('task_submissions').push().set({ taskTitle: `Video Zone ${type === 2 ? 'A' : 'B'} (Ad #${currentNumber}) 🎥`, userId: currentUser.id.toString(), userName: currentUser.firstName, reward: rewardAmount, status: "APPROVED", timestamp: Date.now() });
+        if(typeof tg.showAlert === 'function') tg.showAlert("অভিনন্দন! রিওয়ার্ড কয়েন সফলভাবে যোগ করা হয়েছে। 🎉"); switchTaskTab(type); 
+      });
+    }
+
+    function applyPromoCode() {
+      const inputEl = document.getElementById('promo-code-input'); if(!inputEl) return;
+      const btn = document.getElementById('promo-apply-btn');
+      const typedCode = inputEl.value.trim().toUpperCase();
+
+      if(!typedCode) { if(typeof tg.showAlert === 'function') tg.showAlert("দয়া করে একটি প্রোমো কোড লিখুন!"); return; }
+      if(currentUser.usedPromo === true) { if(typeof tg.showAlert === 'function') tg.showAlert("আপনি অলরেডি প্রমোকোড ব্যবহার করে ফেলেছেন! ❌"); return; }
+      if(typedCode !== serverPromoCode.toUpperCase()) { if(typeof tg.showAlert === 'function') tg.showAlert("ভুল প্রোমো কোড! ❌"); return; }
+      
+      if(btn) btn.disabled = true;
+
+      // প্রোমো কোড ব্যবহারের জন্য ট্রানজেকশন প্রসেসিং সুরক্ষাকরণ 
+      db.ref('app_config/promoUsedCount').transaction((currentCount) => {
+        if ((currentCount || 0) >= serverPromoLimit) { return; }
+        return (currentCount || 0) + 1;
+      }, (error, committed) => {
+        if (error) {
+          if(btn) btn.disabled = false;
+          if(typeof tg.showAlert === 'function') tg.showAlert("নেটওয়ার্ক সমস্যা! আবার চেষ্টা করুন।");
+        } else if (!committed) {
+          if(btn) btn.disabled = false;
+          if(typeof tg.showAlert === 'function') tg.showAlert("দুঃখিত! এই প্রোমো কোডটির ব্যবহারের সর্বোচ্চ লিমিট শেষ হয়ে গেছে। ❌");
+        } else {
+          db.ref('users/' + currentUser.id).update({ balance: currentUser.balance + serverPromoReward, usedPromo: true }).then(() => {
+            db.ref('task_submissions').push().set({ 
+              taskTitle: `Promo Code Applied (${typedCode}) 🎰`, 
+              userId: currentUser.id.toString(), 
+              userName: currentUser.firstName, 
+              reward: serverPromoReward, 
+              status: "APPROVED", 
+              timestamp: Date.now() 
+            }).then(() => {
+              if(typeof tg.showAlert === 'function') tg.showAlert("সফল হয়েছে! কয়েন অ্যাড করা হয়েছে! 💰"); 
+              switchScreen('profile');
+            });
+          });
+        }
+      });
+    }
+
+    function loadUserWithdrawalHistory() {
+      db.ref('withdrawals').orderByChild('userId').equalTo(tgUser.id.toString()).on('value', (snapshot) => {
+        const container = document.getElementById('user-history-list'); if(!container) return; container.innerHTML = "";
+        if(!snapshot.exists()) { container.innerHTML = `<p class="text-slate-400 text-[11px] text-center py-2">No history found.</p>`; return; }
+        let listHTML = ""; const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000); let itemCount = 0;
+        snapshot.forEach((child) => {
+          const w = child.val();
+          if (w.timestamp >= sevenDaysAgo) {
+            itemCount++; let statusText = "Pending ⏳"; let badgeClass = "bg-amber-50 text-amber-600 border-amber-200";
+            if(w.status === "APPROVED_PAID") { statusText = "Paid ✅"; badgeClass = "bg-emerald-50 text-emerald-600 border-emerald-200"; }
+            else if(w.status === "REJECTED_REFUNDED") { statusText = "Rejected ❌"; badgeClass = "bg-rose-50 text-rose-600 border-rose-200"; }
+            listHTML = `<div class="bg-slate-50 border border-slate-100 p-2.5 rounded-xl flex justify-between items-center mb-1"><div><p class="font-bold text-slate-700">${w.method} (${w.wallet})</p><p class="text-[10px] text-slate-400">${new Date(w.timestamp).toLocaleDateString()}</p></div><div class="text-right"><p class="font-bold text-slate-800">${w.amountCoins} C</p><span class="text-[9px] px-1.5 py-0.5 rounded border ${badgeClass} font-medium">${statusText}</span></div></div>` + listHTML;
+          }
+        });
+        if (itemCount === 0) container.innerHTML = `<p class="text-slate-400 text-[11px] text-center py-2">Last 7 days history is clear.</p>`; else container.innerHTML = listHTML;
+      });
+    }
+
+    function loadUserTaskHistory() {
+      db.ref('task_submissions').orderByChild('userId').equalTo(tgUser.id.toString()).on('value', (snapshot) => {
+        const container = document.getElementById('user-task-history-list'); if(!container) return; container.innerHTML = "";
+        if(!snapshot.exists()) { container.innerHTML = `<p class="text-slate-400 text-[11px] text-center py-2">No tasks submitted yet.</p>`; return; }
+        let listHTML = ""; const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000); let itemCount = 0;
+        snapshot.forEach((child) => {
+          const taskData = child.val();
+          if (taskData.timestamp >= sevenDaysAgo) {
+            itemCount++; let statusText = taskData.status === "APPROVED" ? "Approved ✅" : taskData.status === "REJECTED" ? "Rejected ❌" : "Pending ⏳"; 
+            let badgeClass = taskData.status === "APPROVED" ? "bg-emerald-50 text-emerald-600 border-emerald-200" : taskData.status === "REJECTED" ? "bg-rose-50 text-rose-600 border-rose-200" : "bg-amber-50 text-amber-600 border-amber-200";
+            listHTML = `<div class="bg-slate-50 border border-slate-100 p-2.5 rounded-xl flex justify-between items-center mb-1"><div class="max-w-[70%]"><p class="font-bold text-slate-700 truncate text-[11px]">${taskData.taskTitle || "Secure Task"}</p><p class="text-[9px] text-slate-400">${new Date(taskData.timestamp).toLocaleDateString()}</p></div><div class="text-right"><p class="font-bold text-slate-800 text-[11px]">+${taskData.reward || 0} C</p><span class="text-[9px] px-1.5 py-0.5 rounded border ${badgeClass} font-medium">${statusText}</span></div></div>` + listHTML;
+          }
+        });
+        if (itemCount === 0) container.innerHTML = `<p class="text-slate-400 text-[11px] text-center py-2">Last 7 days history is clear.</p>`; else container.innerHTML = listHTML;
+      });
+    }
+
+    function loadTasks() {
+      db.ref('user_completions/' + currentUser.id).on('value', (completedSnapshot) => {
+        const completedTasks = completedSnapshot.val() || {};
+        db.ref('tasks').once('value', (snapshot) => {
+          const container = document.getElementById('tasks-list'); if(!container || activeTaskTab !== 1) return; container.innerHTML = "";
+          if(!snapshot.exists()) { container.innerHTML = "<p class='text-center text-xs text-slate-400 py-4'>No active tasks right now.</p>"; return; }
+          
+          let count = 0;
+          snapshot.forEach((child) => {
+            const task = child.val(); const id = child.key;
+            if (completedTasks[id] && (completedTasks[id].status === "APPROVED" || completedTasks[id].status === "PENDING")) return;
+            count++;
+            
+            const customHintText = task.proofHint ? task.proofHint : "এখানে আপনার ইউজারনেম/আইডি লিখুন...";
+            const pType = task.proofType || "both"; 
+            const imageFieldHTML = (pType === "both") ? `
+              <div>
+                <label class="text-[10px] text-slate-400 font-bold block mb-1">কাজের প্রমাণ ২: (স্ক্রিনশট আপলোড)</label>
+                <input type="file" id="image-${id}" accept="image/*" class="w-full text-[11px] border border-slate-200 p-1.5 rounded-md bg-slate-50 text-slate-500 focus:outline-none">
+              </div>
+            ` : '';
+
+            const card = document.createElement('div'); card.className = "bg-white rounded-xl border border-slate-100 p-4 shadow-xs space-y-3";
+            card.innerHTML = `
+              <div class="flex justify-between items-center"><span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-orange-50 text-orange-600 uppercase">${task.category || 'Job'}</span><span class="text-emerald-600 font-bold text-xs">+${task.reward} Coins</span></div>
+              <h4 class="font-bold text-slate-800 text-xs">${task.title}</h4>
+              <div class="bg-slate-50/80 p-2.5 rounded-lg border border-slate-100 text-[11px] text-slate-600"><p class="whitespace-pre-line leading-relaxed">${task.description || "কাজের নিয়ম মেনে কাজটি করুন।"}</p></div>
+              <div class="space-y-2 pt-1">
+                <div>
+                  <label class="text-[10px] text-slate-400 font-bold block mb-1">কাজের প্রমাণ ১: (টেক্সট প্রুফ)</label>
+                  <input type="text" id="proof-${id}" placeholder="${customHintText}" class="w-full text-[11px] border border-slate-200 p-2 rounded-md focus:outline-none focus:border-orange-400">
+                </div>
+                ${imageFieldHTML}
+                <div class="flex gap-2 pt-1">
+                  <button onclick="if(typeof tg.openLink === 'function'){tg.openLink('${task.url}')}else{window.open('${task.url}','_blank')}" class="bg-slate-100 text-slate-700 text-[11px] font-bold py-2 px-3 rounded-md flex-1">Open Link</button>
+                  <button id="submit-btn-${id}" onclick="verifyAndSubmitTask('${id}', ${task.reward}, '${task.title}', '${pType}')" class="bg-orange-500 text-white text-[11px] font-bold py-2 px-3 rounded-md flex-1">Submit Task</button>
+                </div>
+              </div>
+            `;
+            container.appendChild(card);
+          });
+          if(count === 0) container.innerHTML = "<p class='text-center text-xs text-slate-400 py-4'>All tasks completed!</p>";
+        });
+      });
+    }
+
+    function verifyAndSubmitTask(taskId, reward, taskTitle, proofType) {
+      const proofInput = document.getElementById('proof-' + taskId).value.trim();
+      const sBtn = document.getElementById('submit-btn-' + taskId);
+      
+      if(proofInput.length < 3) { if(typeof tg.showAlert === 'function') tg.showAlert("Error: Please input valid text proof!"); return; }
+      if(sBtn) { sBtn.disabled = true; sBtn.innerText = "Processing..."; }
+      
+      const pushToDatabase = (screenshotData = "N/A") => {
+        const submissionRef = db.ref('task_submissions').push();
+        submissionRef.set({
+          taskId: taskId, taskTitle: taskTitle, userId: currentUser.id.toString(), userName: currentUser.firstName, userUsername: currentUser.username || "N/A",
+          proofText: proofInput, screenshotData: screenshotData, reward: Number(reward), status: "PENDING", timestamp: Date.now()
+        }).then(() => {
+          db.ref('user_completions/' + currentUser.id + '/' + taskId).set({ proof: proofInput, status: "PENDING", submittedAt: Date.now() })
+          .then(() => { if(typeof tg.showAlert === 'function') tg.showAlert("আপনার প্রুফ সফলভাবে জমা হয়েছে! 🎉"); switchScreen('tasks'); });
+        }).catch((error) => { 
+          if(sBtn) { sBtn.disabled = false; sBtn.innerText = "Submit Task"; }
+          if(typeof tg.showAlert === 'function') tg.showAlert("ডাটাবেজ ত্রুটি!"); 
+        });
+      };
+
+      if(proofType === "both") {
+        const fileInput = document.getElementById('image-' + taskId);
+        if(!fileInput || !fileInput.files || fileInput.files.length === 0) { 
+          if(sBtn) { sBtn.disabled = false; sBtn.innerText = "Submit Task"; }
+          if(typeof tg.showAlert === 'function') tg.showAlert("Error: Please upload a proof screenshot!"); 
+          return; 
+        }
+        
+        // ফাইল অবজেক্টটি ফিক্স করা হয়েছে ([0] ইনডেক্স ব্যবহার করে)
+        const file = fileInput.files[0]; 
+        const reader = new FileReader();
+        reader.onload = function(event) {
+          const img = new Image(); 
+          img.src = event.target.result;
+          img.onload = function() {
+            const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d');
+            const MAX_WIDTH = 300; let width = img.width; let height = img.height;
+            if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
+            canvas.width = width; canvas.height = height; ctx.drawImage(img, 0, 0, width, height);
+            const compressedBase64 = canvas.toDataURL('image/jpeg', 0.4);
+            pushToDatabase(compressedBase64);
+          };
+          img.onerror = function() {
+            if(sBtn) { sBtn.disabled = false; sBtn.innerText = "Submit Task"; }
+            if(typeof tg.showAlert === 'function') tg.showAlert("Error loading image file!");
+          };
+        };
+        reader.readAsDataURL(file);
+      } else {
+        pushToDatabase("N/A");
+      }
+    }
+
+    function claimDaily() {
+      if (Date.now() - currentUser.dailyLastClaim < 86400000) { if(typeof tg.showAlert === 'function') tg.showAlert("Bonus already claimed today!"); return; }
+      
+      runClaimOptionAdFlow(adsgramClaimBlockId, () => { executeDailyRewardClaim(); });
+    }
+    
+    function executeDailyRewardClaim() {
+      db.ref('users/' + currentUser.id).update({ balance: currentUser.balance + globalDailyReward, dailyLastClaim: Date.now() });
+      db.ref('task_submissions').push().set({ taskTitle: "Daily Bonus Claim 🌟", userId: currentUser.id.toString(), userName: currentUser.firstName, reward: globalDailyReward, status: "APPROVED", timestamp: Date.now() });
+      if(typeof tg.showAlert === 'function') tg.showAlert(globalDailyReward + " Daily Coins Credited!");
+    }
+
+    function setWithdrawMethod(method) {
+      document.getElementById('withdraw-method').value = method;
+      ['bkash', 'nagad', 'rocket'].forEach(m => {
+        const el = document.getElementById('method-' + m);
+        if (el) {
+          el.className = m === method.toLowerCase() ? "py-2 text-xs font-bold border rounded-lg border-orange-500 bg-orange-50 text-orange-600" : "py-2 text-xs font-bold border rounded-lg border-slate-200 text-slate-500";
+        }
+      });
+    }
+
+    function handleWithdraw() {
+      const method = document.getElementById('withdraw-method').value; const wallet = document.getElementById('withdraw-wallet').value.trim(); const coins = parseInt(document.getElementById('withdraw-amount').value);
+      if(!wallet || wallet.length < 11) { if(typeof tg.showAlert === 'function') tg.showAlert("সঠিক mobile ব্যাংকিং নম্বর টাইপ করুন।"); return; }
+      if(isNaN(coins) || coins < globalTargetCoins) { if(typeof tg.showAlert === 'function') tg.showAlert("নূন্যতম উইথড্র সীমা " + globalTargetCoins + " কয়েন।"); return; }
+      if(coins > currentUser.balance) { if(typeof tg.showAlert === 'function') tg.showAlert("আপনার অ্যাকাউন্টে পর্যাপ্ত কয়েন নেই।"); return; }
+
+      db.ref('users/' + currentUser.id + '/balance').transaction((currentBalance) => {
+        if (currentBalance >= coins) { return currentBalance - coins; } else { return; }
+      }, (error, committed) => {
+        if (committed) {
+          let calculatedBDT = (coins / globalTargetCoins) * globalEquivalentBDT;
+          db.ref('withdrawals').push({ userId: tgUser.id.toString(), method: method, wallet: wallet, amountCoins: coins, amountBDT: calculatedBDT, status: "PENDING", timestamp: Date.now() })
+          .then(() => { if(typeof tg.showAlert === 'function') tg.showAlert("আপনার উইথড্রাল রিকোয়েস্টটি সফলভাবে সাবমিট হয়েছে! 🎉"); switchScreen('home'); });
+        } else { if(typeof tg.showAlert === 'function') tg.showAlert("উইথড্র ব্যর্থ হয়েছে!"); }
+      });
+    }
+
+    // Initialization Security Checking
+    if(checkVpnSecurity()) {
+      initUser();
+    }
+  </script>
+</body>
+</html>
+
+```
